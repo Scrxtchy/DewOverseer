@@ -4,9 +4,10 @@ namespace DewOverseer
 {
 	class Program
 	{
+
 		static void Main(string[] args)
 		{
-			Console.WriteLine("Hello World!");
+			Overseer overseer = new Overseer();
 		}
 	}
 }
