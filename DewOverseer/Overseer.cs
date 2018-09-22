@@ -30,20 +30,22 @@ namespace DewOverseer
 			dynamic Message = JsonConvert.DeserializeObject(message);
 			if (Message.serviceTag != null)
 			{//Player
-				if (BannedWords.Words.Any(s => Message.name.ToString().ToLower().Contains(s)))
+				if (BannedWords.Words.Any(s => $"[{Message.serviceTag}]{Message.name}".ToLower().Contains(s)))
 				{
 					Task.Run(async () =>
 					{
-						await Alert($"Bad Name", $"[{Message.serviceTag}]{Message.name}", $"{Message.uid}", $"{Message.server}", "");
+						await Alert($"Bad Name", $"[{Message.serviceTag}]{Message.name}", $"{Message.uid}", $"{Message.server}", "N/A");
 					});
+					Console.WriteLine($"Reporting {message.ToString()}");
 				}
 			} else
 			{//Message
 				if (BannedWords.Words.Any(s => Message.message.ToString().ToLower().Contains(s))){
 					Task.Run(async () =>
 					{
-						await Alert($"Bad Words",$"{Message.player}", $"{Message.UID}", $"{Message.server}", $"{Message.message}");
+						await Alert($"Bad Word",$"{Message.player}", $"{Message.UID}", $"{Message.server}", $"{Message.message}");
 					});
+					Console.WriteLine($"Reporting {message.ToString()}");
 				}
 			}
 			//Console.WriteLine(message.ToString());
@@ -86,6 +88,10 @@ namespace DewOverseer
 			Message = message;
 			Server = server;
 		}
+
+		public AlertMessage(string title, string name, string uID, string server) : this(title, name, uID, server, null)
+		{
+		}
 		public override string ToString()
 		{
 			return $@"{{
@@ -96,9 +102,9 @@ namespace DewOverseer
 					""fields"": [
 						{{""inline"": true, ""name"":""Name"",""value"": ""{Name}"" }},
 						{{""inline"": true, ""name"":""UID"",""value"": ""{UID}""}},
-						{{""inline"": true, ""name"":""Server"",""value"": ""{Server}""}},
-						{{""inline"": false, ""name"":""Message"",""value"": ""{Message}""}}
-					],
+						{{""inline"": true, ""name"":""Server"",""value"": ""{Server}""}}," +
+						((Message == null) ? "" : $@"{{""inline"": false, ""name"":""Message"",""value"": ""{Message}""}}") +
+					$@"],
 					""type"": ""rich""
 				}}]
 			}}";
