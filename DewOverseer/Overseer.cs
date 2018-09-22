@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace DewOverseer
 	class Overseer
 	{
 		private IConfiguration config;
-		
+		private BannedWords BannedWords = new BannedWords();
 
 		public Overseer()
 		{
@@ -26,33 +27,32 @@ namespace DewOverseer
 
 		private void OnMessage(object sender, string message)
 		{
-			if (message.StartsWith("accept"))
-			{
-				Console.WriteLine("Connected");
-				return;
-			}
-
 			dynamic Message = JsonConvert.DeserializeObject(message);
 			if (Message.serviceTag != null)
 			{//Player
-				Task.Run(async () =>
+				if (BannedWords.Words.Any(s => Message.name.ToString().ToLower().Contains(s)))
 				{
-					//await Alert($"[{Message.serviceTag}]{Message.name}", $"{Message.uid}", $"Reported On Server {Message.server}");
-				});
+					Task.Run(async () =>
+					{
+						await Alert($"Bad Name", $"[{Message.serviceTag}]{Message.name}", $"{Message.uid}", $"{Message.server}", "");
+					});
+				}
 			} else
 			{//Message
-				Task.Run(async () =>
-				{
-					//await Alert($"[{Message.serviceTag}]{Message.name}", $"{Message.uid}", $"Reported On Server {Message.server}");
-				});
+				if (BannedWords.Words.Any(s => Message.message.ToString().ToLower().Contains(s))){
+					Task.Run(async () =>
+					{
+						await Alert($"Bad Words",$"{Message.player}", $"{Message.UID}", $"{Message.server}", $"{Message.message}");
+					});
+				}
 			}
-			Console.WriteLine(message.ToString());
+			//Console.WriteLine(message.ToString());
 		}
 
-		async private Task<String> Alert(string name, string UID, string message)
+		async private Task<String> Alert(string title, string name, string UID, string server, string message)
 		{
 			using (HttpClient client = new HttpClient())
-			using (HttpResponseMessage content = await client.PostAsync(config["webhook"], new StringContent(new AlertMessage(name, UID, message).ToString(), System.Text.Encoding.UTF8, "application/json")))
+			using (HttpResponseMessage content = await client.PostAsync(config["webhook"], new StringContent(new AlertMessage(title, name, UID, server, message).ToString(), System.Text.Encoding.UTF8, "application/json")))
 				return await content.Content.ReadAsStringAsync();
 		}
 
@@ -72,27 +72,32 @@ namespace DewOverseer
 	}
 	class AlertMessage
 	{
+		private readonly string Title;
 		private readonly string Name;
 		private readonly string UID;
 		private readonly string Message;
-
-		public AlertMessage(string name, string uID, string message)
+		private readonly string Server;
+		
+		public AlertMessage(string title, string name, string uID, string server, string message)
 		{
+			Title = title;
 			Name = name;
 			UID = uID;
 			Message = message;
+			Server = server;
 		}
 		public override string ToString()
 		{
 			return $@"{{
-				""content"": ""Test Post"",
+				""content"": "" "",
 				""embeds"": [{{
 					""color"": 15427412,
-					""title"": ""Player Kicked"",
+					""title"": ""{Title}"",
 					""fields"": [
 						{{""inline"": true, ""name"":""Name"",""value"": ""{Name}"" }},
 						{{""inline"": true, ""name"":""UID"",""value"": ""{UID}""}},
-						{{""inline"": true, ""name"":""Reason"",""value"": ""{Message}""}}
+						{{""inline"": true, ""name"":""Server"",""value"": ""{Server}""}},
+						{{""inline"": false, ""name"":""Message"",""value"": ""{Message}""}}
 					],
 					""type"": ""rich""
 				}}]
